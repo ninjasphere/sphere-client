@@ -1,0 +1,10 @@
+{
+  "name": "sphere-client",
+  "version": "0.1.0",
+  "description": "Ninja Sphere - Client",
+  "main": "sphere-client",
+  "author": "Elliot Shepherd <elliot@ninjablocks.com>",
+  "license": "MIT",
+  "topics": {},
+  "maxMemory": 10
+}
