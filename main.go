@@ -10,7 +10,7 @@ import (
 
 func main() {
 
-	client.NewClient()
+	client.Start()
 
 	s := make(chan os.Signal, 1)
 	signal.Notify(s, os.Interrupt, os.Kill)
