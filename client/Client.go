@@ -134,8 +134,6 @@ type credentials struct {
 	MasterNodeID string `json:"masterNodeId"`
 }
 
-//{"type":"node_claim","data":{"user_id":"4f983c15-c040-4de8-995d-12a656711113","site_id":"ac4da3f6-1439-4958-bfbb-6dc4f4078c5e","node_id":"elliotmac","token":"ntok_20bda9cec28b078e61e0fdad6e8197bee3d169752f230efd"}}
-
 func activate(client *http.Client, url string) (*credentials, error) {
 
 	log.Debugf("Requesting url: %s", url)
