@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
+	"github.com/armon/mdns"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -43,6 +45,54 @@ func Start() {
 	}
 
 	log.Infof("Client is paired. Site: %s User: %s", config.MustString("siteId"), config.MustString("userId"))
+
+	masterId := config.String(config.Serial(), "masterNodeId")
+
+	if masterId == config.Serial() {
+		log.Infof("We are the master")
+	} else {
+		log.Infof("We are a slave. The master is %s", masterId)
+	}
+
+	// Make a channel for results and start listening
+	entriesCh := make(chan *mdns.ServiceEntry, 4)
+	go func() {
+		for entry := range entriesCh {
+
+			info := parseMdnsInfo(entry.Info)
+
+			id, ok := info["ninja.sphere.node_id"]
+
+			if !ok {
+				log.Warningf("Found a node, but couldn't get it's node id. %v", entry)
+				continue
+			}
+
+			if id == masterId {
+				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
+			} else {
+
+				user, ok := info["ninja.sphere.user_id"]
+
+				if !ok {
+					log.Warningf("Found a node, but couldn't get it's user id. %v", entry)
+					continue
+				}
+
+				if user == config.MustString("userId") {
+					log.Infof("Found a sibling node (%s) - %s", id, entry.Addr)
+				} else {
+					log.Infof("Found a node owned by another user (%s) (%s) - %s", user, id, entry.Addr)
+				}
+
+			}
+		}
+	}()
+
+	// Start the lookup
+	mdns.Lookup("_ninja-homecloud-mqtt._tcp", entriesCh)
+	close(entriesCh)
+
 }
 
 func (c *client) isPaired() bool {
@@ -168,4 +218,14 @@ func activate(client *http.Client, url string) (*credentials, error) {
 		Token:        response.Data.Token,
 		MasterNodeID: response.Data.MasterNodeID,
 	}, err
+}
+
+func parseMdnsInfo(field string) map[string]string {
+	vals := make(map[string]string)
+
+	for _, part := range strings.Split(field, "|") {
+		chunks := strings.Split(part, "=")
+		vals[chunks[0]] = chunks[1]
+	}
+	return vals
 }
