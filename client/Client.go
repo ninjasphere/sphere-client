@@ -20,16 +20,37 @@ import (
 var log = logger.GetLogger("Client")
 
 type client struct {
+	conn   *ninja.Connection
+	master bool
+}
+
+type bridgeStatus struct {
+	Connected  bool `json:"connected"`
+	Configured bool `json:"connected"`
 }
 
 func Start() {
-
 	log.Infof("Starting client on Node: %s", config.Serial())
-	client := &client{}
 
-	if !client.isPaired() {
+	conn, err := ninja.Connect("client")
+	if err != nil {
+		log.Fatalf("Failed to connect to sphere: %s", err)
+	}
+
+	client := &client{conn, false}
+
+	client.updatePairingLight("black", false)
+
+	conn.Subscribe("$sphere/bridge/status", client.onBridgeStatus)
+
+	client.start()
+}
+
+func (c *client) start() {
+
+	if !c.isPaired() {
 		log.Infof("Client is unpaired. Attempting to pair.")
-		if err := client.pair(); err != nil {
+		if err := c.pair(); err != nil {
 			log.Infof("An error occurred while pairing. Restarting. error: %s", err)
 			os.Exit(1)
 		}
@@ -38,7 +59,7 @@ func Start() {
 		// We reload the config so the creds can be picked up
 		config.MustRefresh()
 
-		if !client.isPaired() {
+		if !c.isPaired() {
 			log.Infof("Pairing appeared successful, but we did not get the credentials. Restarting.")
 			os.Exit(1)
 		}
@@ -46,12 +67,13 @@ func Start() {
 
 	log.Infof("Client is paired. Site: %s User: %s", config.MustString("siteId"), config.MustString("userId"))
 
-	masterId := config.String(config.Serial(), "masterNodeId")
+	masterID := config.String(config.Serial(), "masterNodeId")
 
-	if masterId == config.Serial() {
-		log.Infof("We are the master")
+	if masterID == config.Serial() {
+		log.Infof("We are the master.")
+
 	} else {
-		log.Infof("We are a slave. The master is %s", masterId)
+		log.Infof("We are a slave. The master is %s", masterID)
 	}
 
 	// Make a channel for results and start listening
@@ -68,7 +90,7 @@ func Start() {
 				continue
 			}
 
-			if id == masterId {
+			if id == masterID {
 				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
 			} else {
 
@@ -97,6 +119,34 @@ func Start() {
 
 func (c *client) isPaired() bool {
 	return config.HasString("siteId") && config.HasString("token") && config.HasString("userId") && config.HasString("nodeId")
+}
+
+func (c *client) onBridgeStatus(status *bridgeStatus) bool {
+	log.Debugf("Got bridge status: %v", status)
+
+	if status.Connected {
+		c.updatePairingLight("green", false)
+	} else {
+		c.updatePairingLight("red", true)
+	}
+
+	if !status.Configured && c.master {
+		log.Infof("Configuring bridge")
+
+		c.conn.SendNotification("$sphere/bridge/connect", map[string]string{
+			"url":   config.MustString("cloud", "url"),
+			"token": config.MustString("token"),
+		})
+	}
+
+	return true
+}
+
+func (c *client) updatePairingLight(color string, flash bool) {
+	c.conn.SendNotification("$hardware/status/pairing", map[string]interface{}{
+		"color": color,
+		"flash": flash,
+	})
 }
 
 func (c *client) pair() error {
