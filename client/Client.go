@@ -5,13 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"runtime"
 	"strings"
 	"time"
 
-	"github.com/armon/mdns"
+	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
+	"github.com/hashicorp/mdns"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
@@ -26,7 +28,7 @@ type client struct {
 
 type bridgeStatus struct {
 	Connected  bool `json:"connected"`
-	Configured bool `json:"connected"`
+	Configured bool `json:"configured"`
 }
 
 func Start() {
@@ -41,9 +43,24 @@ func Start() {
 
 	client.updatePairingLight("black", false)
 
-	conn.Subscribe("$sphere/bridge/status", client.onBridgeStatus)
+	conn.SubscribeRaw("$sphere/bridge/status", client.onBridgeStatus)
 
 	client.start()
+
+	log.Infof("Starting mdns server")
+
+	// Setup our service export
+	host, _ := os.Hostname()
+	service := &mdns.MDNSService{
+		Instance: host,
+		Service:  "_foobar._tcp",
+		Port:     8000,
+		TXT:      []string{"My awesome service"},
+	}
+
+	// Create the mDNS server, defer shutdown
+	_, _ = mdns.NewServer(&mdns.Config{Zone: service})
+	//defer server.Shutdown()
 }
 
 func (c *client) start() {
@@ -60,7 +77,7 @@ func (c *client) start() {
 		config.MustRefresh()
 
 		if !c.isPaired() {
-			log.Infof("Pairing appeared successful, but we did not get the credentials. Restarting.")
+			log.Infof("Pairing appeared successful, but I did not get the credentials. Restarting.")
 			os.Exit(1)
 		}
 	}
@@ -70,10 +87,10 @@ func (c *client) start() {
 	masterID := config.String(config.Serial(), "masterNodeId")
 
 	if masterID == config.Serial() {
-		log.Infof("We are the master.")
-
+		log.Infof("I am the master.")
+		c.master = true
 	} else {
-		log.Infof("We are a slave. The master is %s", masterID)
+		log.Infof("I am a slave. The master is %s", masterID)
 	}
 
 	// Make a channel for results and start listening
@@ -90,8 +107,17 @@ func (c *client) start() {
 				continue
 			}
 
+			if id == config.Serial() {
+				// It's me.
+				continue
+			}
+
 			if id == masterID {
 				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
+
+				if err := c.bridgeToMaster(entry.Addr, entry.Port); err != nil {
+					log.Errorf("Failed to bridge to master %s:%d (%s) : %s", entry.Addr, entry.Port, id, err)
+				}
 			} else {
 
 				user, ok := info["ninja.sphere.user_id"]
@@ -121,8 +147,81 @@ func (c *client) isPaired() bool {
 	return config.HasString("siteId") && config.HasString("token") && config.HasString("userId") && config.HasString("nodeId")
 }
 
+func (c *client) bridgeToMaster(host net.IP, port int) error {
+
+	log.Debugf("Bridging to the master: %s:%d", host, port)
+
+	mqttURL := fmt.Sprintf("tcp://%s:%d", host, port)
+
+	clientID := "slave-" + config.Serial()
+
+	log.Infof("Connecting to %s using cid:%s", mqttURL, clientID)
+
+	local := c.conn.GetMqttClient()
+
+	opts := mqtt.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true)
+	master := mqtt.NewClient(opts)
+
+	if _, err := master.Start(); err != nil {
+		return err
+	}
+
+	bridgeTopics := []string{"$node/#", "$device/#"}
+
+	c.bridgeMqtt(master, local, true, bridgeTopics)
+	c.bridgeMqtt(local, master, false, bridgeTopics)
+
+	return nil
+}
+
+// bridgeMqtt connects one mqtt broker to another. Shouldn't probably be doing this. But whatever.
+func (c *client) bridgeMqtt(from, to *mqtt.MqttClient, masterToSlave bool, topics []string) {
+
+	var payload map[string]interface{}
+	onMessage := func(_ *mqtt.MqttClient, message mqtt.Message) {
+		payload = map[string]interface{}{}
+		json.Unmarshal(message.Payload(), &payload)
+
+		source, hasSource := payload["$mesh-source"]
+
+		interesting := false
+
+		if masterToSlave {
+			// Interesting if it's from the master or one of the other slaves
+			interesting = !hasSource || (source.(string) != config.Serial())
+		} else {
+			// Interesting if it's from me
+			interesting = !hasSource
+		}
+
+		if interesting {
+
+			if !hasSource {
+				if masterToSlave {
+					payload["$mesh-source"] = "master"
+				} else {
+					payload["$mesh-source"] = config.Serial()
+				}
+			}
+
+			jsonPayload, _ := json.Marshal(payload)
+			to.Publish(mqtt.QoS(0), message.Topic(), jsonPayload)
+		}
+
+	}
+
+	for _, topic := range topics {
+		filter, _ := mqtt.NewTopicFilter(topic, 0)
+		_, err := from.StartSubscription(onMessage, filter)
+		if err != nil {
+			log.Fatalf("Failed to subscribe to topic %s when bridging to master: %s", topic, err)
+		}
+	}
+
+}
+
 func (c *client) onBridgeStatus(status *bridgeStatus) bool {
-	log.Debugf("Got bridge status: %v", status)
+	log.Debugf("Got bridge status. connected:%t configured:%t", status.Connected, status.Configured)
 
 	if status.Connected {
 		c.updatePairingLight("green", false)
@@ -133,7 +232,7 @@ func (c *client) onBridgeStatus(status *bridgeStatus) bool {
 	if !status.Configured && c.master {
 		log.Infof("Configuring bridge")
 
-		c.conn.SendNotification("$sphere/bridge/connect", map[string]string{
+		c.conn.PublishRaw("$sphere/bridge/connect", map[string]string{
 			"url":   config.MustString("cloud", "url"),
 			"token": config.MustString("token"),
 		})
@@ -143,7 +242,7 @@ func (c *client) onBridgeStatus(status *bridgeStatus) bool {
 }
 
 func (c *client) updatePairingLight(color string, flash bool) {
-	c.conn.SendNotification("$hardware/status/pairing", map[string]interface{}{
+	c.conn.PublishRaw("$hardware/status/pairing", map[string]interface{}{
 		"color": color,
 		"flash": flash,
 	})
