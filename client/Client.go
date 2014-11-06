@@ -13,17 +13,32 @@ import (
 	"time"
 
 	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
-	"github.com/hashicorp/mdns"
+	"github.com/jonaz/mdns"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
+/*
+
+TO DO:
+
+On startup, if we have internet, we need to get the lastest master node id and master update node id
+from the cloud (a rest service).
+
+The update id needs to be exported over mdns, and is used to see if we are up to date with the latest
+master id. If there is a newer one, we need to shut homecloud and all the drivers down and restart
+our process.
+
+*/
+
 var log = logger.GetLogger("Client")
 
 type client struct {
-	conn   *ninja.Connection
-	master bool
+	conn     *ninja.Connection
+	master   bool
+	masterID string
+	bridged  bool
 }
 
 type bridgeStatus struct {
@@ -39,7 +54,9 @@ func Start() {
 		log.Fatalf("Failed to connect to sphere: %s", err)
 	}
 
-	client := &client{conn, false}
+	client := &client{
+		conn: conn,
+	}
 
 	client.updatePairingLight("black", false)
 
@@ -47,20 +64,11 @@ func Start() {
 
 	client.start()
 
-	log.Infof("Starting mdns server")
-
-	// Setup our service export
-	host, _ := os.Hostname()
-	service := &mdns.MDNSService{
-		Instance: host,
-		Service:  "_foobar._tcp",
-		Port:     8000,
-		TXT:      []string{"My awesome service"},
+	err = updateSphereAvahiService(client.master)
+	if err != nil {
+		log.Fatalf("Failed to update avahi service: %s", err)
 	}
 
-	// Create the mDNS server, defer shutdown
-	_, _ = mdns.NewServer(&mdns.Config{Zone: service})
-	//defer server.Shutdown()
 }
 
 func (c *client) start() {
@@ -84,20 +92,30 @@ func (c *client) start() {
 
 	log.Infof("Client is paired. Site: %s User: %s", config.MustString("siteId"), config.MustString("userId"))
 
-	masterID := config.String(config.Serial(), "masterNodeId")
+	c.masterID = config.String(config.Serial(), "masterNodeId")
 
-	if masterID == config.Serial() {
-		log.Infof("I am the master.")
+	if c.masterID == config.Serial() {
+		log.Infof("I am the master, starting HomeCloud.")
+		c.conn.SendNotification("$node/"+config.Serial()+"/module/start", "sphere-go-homecloud")
 		c.master = true
 	} else {
-		log.Infof("I am a slave. The master is %s", masterID)
+		log.Infof("I am a slave. The master is %s", c.masterID)
 	}
+
+	go func() {
+		for {
+			c.findPeers()
+			time.Sleep(time.Second * 30)
+		}
+	}()
+}
+
+func (c *client) findPeers() {
 
 	// Make a channel for results and start listening
 	entriesCh := make(chan *mdns.ServiceEntry, 4)
 	go func() {
 		for entry := range entriesCh {
-
 			info := parseMdnsInfo(entry.Info)
 
 			id, ok := info["ninja.sphere.node_id"]
@@ -112,11 +130,12 @@ func (c *client) start() {
 				continue
 			}
 
-			if id == masterID {
+			if id == c.masterID {
 				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
 
-				if err := c.bridgeToMaster(entry.Addr, entry.Port); err != nil {
-					log.Errorf("Failed to bridge to master %s:%d (%s) : %s", entry.Addr, entry.Port, id, err)
+				if !c.bridged {
+					c.bridgeToMaster(entry.Addr, entry.Port)
+					c.bridged = true
 				}
 			} else {
 
@@ -140,14 +159,12 @@ func (c *client) start() {
 	// Start the lookup
 	mdns.Lookup("_ninja-homecloud-mqtt._tcp", entriesCh)
 	close(entriesCh)
-
 }
-
 func (c *client) isPaired() bool {
 	return config.HasString("siteId") && config.HasString("token") && config.HasString("userId") && config.HasString("nodeId")
 }
 
-func (c *client) bridgeToMaster(host net.IP, port int) error {
+func (c *client) bridgeToMaster(host net.IP, port int) {
 
 	log.Debugf("Bridging to the master: %s:%d", host, port)
 
@@ -155,7 +172,7 @@ func (c *client) bridgeToMaster(host net.IP, port int) error {
 
 	clientID := "slave-" + config.Serial()
 
-	log.Infof("Connecting to %s using cid:%s", mqttURL, clientID)
+	log.Infof("Connecting to master %s using cid:%s", mqttURL, clientID)
 
 	local := c.conn.GetMqttClient()
 
@@ -163,15 +180,13 @@ func (c *client) bridgeToMaster(host net.IP, port int) error {
 	master := mqtt.NewClient(opts)
 
 	if _, err := master.Start(); err != nil {
-		return err
+		log.Fatalf("Failed to connect to master: %s", err)
 	}
 
 	bridgeTopics := []string{"$node/#", "$device/#"}
 
 	c.bridgeMqtt(master, local, true, bridgeTopics)
 	c.bridgeMqtt(local, master, false, bridgeTopics)
-
-	return nil
 }
 
 // bridgeMqtt connects one mqtt broker to another. Shouldn't probably be doing this. But whatever.
