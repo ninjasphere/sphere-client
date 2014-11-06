@@ -1,0 +1,37 @@
+<script src="http://adrai.github.io/flowchart.js/raphael-min.js"></script>
+<script src="http://adrai.github.io/flowchart.js/flowchart-latest.js"></script>
+
+<style>
+  textarea { display:none }
+</style>
+
+<div id="paired-flow"></div>
+
+<textarea id="paired">
+start=>start: Startup
+shutdown=>end: Restart process
+net=>condition: Internet connection?
+find=>operation: Find peers via MDNS
+update=>operation: Update master_node_id
+and master_update_id
+newer=>condition: Do we have the
+latest master_update_id
+on the network?
+ismaster=>condition: Are we master?
+slave=>operation: Bridge to master
+slave2=>operation: (Temporary)
+Start any drivers we
+can run on a slave
+master=>operation: Start HomeCloud
+
+start->net(yes)->find->newer(yes)->ismaster
+net(no)->update->find
+newer(no)->shutdown
+ismaster(yes)->master
+ismaster(no)->slave->slave2
+</textarea>
+
+<script>
+  var diagram = flowchart.parse(document.getElementById('paired').innerText);
+  diagram.drawSVG('paired-flow');
+</script>
