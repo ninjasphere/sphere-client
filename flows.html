@@ -24,8 +24,8 @@ Start any drivers we
 can run on a slave
 master=>operation: Start HomeCloud
 
-start->net(yes)->find->newer(yes)->ismaster
-net(no)->update->find
+start->net(no)->find->newer(yes)->ismaster
+net(yes)->update->find
 newer(no)->shutdown
 ismaster(yes)->master
 ismaster(no)->slave->slave2
