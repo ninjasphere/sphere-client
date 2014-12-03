@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"git.eclipse.org/gitroot/paho/org.eclipse.paho.mqtt.golang.git"
 	"github.com/jonaz/mdns"
 	"github.com/ninjasphere/go-ninja/api"
+	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 )
@@ -168,20 +168,15 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 
 	log.Debugf("Bridging to the master: %s:%d", host, port)
 
-	mqttURL := fmt.Sprintf("tcp://%s:%d", host, port)
+	mqttURL := fmt.Sprintf("%s:%d", host, port)
 
 	clientID := "slave-" + config.Serial()
 
 	log.Infof("Connecting to master %s using cid:%s", mqttURL, clientID)
 
+	master := bus.MustConnect(mqttURL, clientID)
+
 	local := c.conn.GetMqttClient()
-
-	opts := mqtt.NewClientOptions().AddBroker(mqttURL).SetClientId(clientID).SetCleanSession(true)
-	master := mqtt.NewClient(opts)
-
-	if _, err := master.Start(); err != nil {
-		log.Fatalf("Failed to connect to master: %s", err)
-	}
 
 	bridgeTopics := []string{"$node/#", "$device/#"}
 
@@ -190,12 +185,12 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 }
 
 // bridgeMqtt connects one mqtt broker to another. Shouldn't probably be doing this. But whatever.
-func (c *client) bridgeMqtt(from, to *mqtt.MqttClient, masterToSlave bool, topics []string) {
+func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []string) {
 
 	var payload map[string]interface{}
-	onMessage := func(_ *mqtt.MqttClient, message mqtt.Message) {
+	onMessage := func(topic string, payloadBytes []byte) {
 		payload = map[string]interface{}{}
-		json.Unmarshal(message.Payload(), &payload)
+		json.Unmarshal(payloadBytes, &payload)
 
 		source, hasSource := payload["$mesh-source"]
 
@@ -220,14 +215,13 @@ func (c *client) bridgeMqtt(from, to *mqtt.MqttClient, masterToSlave bool, topic
 			}
 
 			jsonPayload, _ := json.Marshal(payload)
-			to.Publish(mqtt.QoS(0), message.Topic(), jsonPayload)
+			to.Publish(topic, jsonPayload)
 		}
 
 	}
 
 	for _, topic := range topics {
-		filter, _ := mqtt.NewTopicFilter(topic, 0)
-		_, err := from.StartSubscription(onMessage, filter)
+		_, err := from.Subscribe(topic, onMessage)
 		if err != nil {
 			log.Fatalf("Failed to subscribe to topic %s when bridging to master: %s", topic, err)
 		}
