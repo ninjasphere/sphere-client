@@ -257,13 +257,22 @@ func (c *client) updatePairingLight(color string, flash bool) {
 	})
 }
 
-func (c *client) pair() error {
+func getLocalIP() string {
 
-	localIP, err := ninja.GetNetAddress()
+	var localIP string
+	var err error
 
-	if err != nil {
-		log.Fatalf("Could not find local IP: %s", err)
+	for {
+		localIP, err = ninja.GetNetAddress()
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
 	}
+	return localIP
+}
+
+func (c *client) pair() error {
 
 	var boardType string
 	if config.HasString("boardType") {
@@ -273,13 +282,10 @@ func (c *client) pair() error {
 	}
 
 	log.Debugf("Board type: %s", boardType)
-	log.Debugf("Local IP: %s", localIP)
 
-	url := fmt.Sprintf(config.MustString("cloud", "activation"), config.Serial(), localIP, boardType)
-
-	log.Infof("Activating at URL: %s", url)
-
-	client := &http.Client{}
+	client := &http.Client{
+		Timeout: time.Second * 60, // It's 20sec on the server so this *should* be ok
+	}
 
 	if config.Bool(false, "cloud", "allowSelfSigned") {
 		log.Warningf("Allowing self-signed cerificate (should only be used to connect to development cloud)")
@@ -291,7 +297,11 @@ func (c *client) pair() error {
 	var creds *credentials
 
 	for {
-		creds, err = activate(client, url)
+		url := fmt.Sprintf(config.MustString("cloud", "activation"), config.Serial(), getLocalIP(), boardType)
+
+		log.Debugf("Activating at URL: %s", url)
+
+		creds, err := activate(client, url)
 
 		if err != nil {
 			log.Warningf("Activation error : %s", err)
