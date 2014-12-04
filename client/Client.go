@@ -309,7 +309,8 @@ func (c *client) pair() error {
 
 		log.Debugf("Activating at URL: %s", url)
 
-		creds, err := activate(client, url)
+		var err error
+		creds, err = activate(client, url)
 
 		if err != nil {
 			log.Warningf("Activation error : %s", err)
