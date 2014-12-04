@@ -1,46 +1,69 @@
 package client
 
 import (
-	"fmt"
+	"bytes"
 	"io/ioutil"
 	"runtime"
+	"text/template"
 
 	"github.com/ninjasphere/go-ninja/config"
 )
 
-func updateSphereAvahiService(isMaster bool) error {
-
-	serviceDefinition := `<?xml version="1.0" standalone="no"?>
+var src = `<?xml version="1.0" standalone="no"?>
 <!DOCTYPE service-group SYSTEM "avahi-service.dtd">
 <service-group>
-  <name replace-wildcards="yes">%s</name>
-  <service>
-    <type>_ninja-homecloud-rest._tcp</type>
-    <port>80</port>
-    <txt-record>ninja.sphere.user_id=%s</txt-record>
-    <txt-record>ninja.sphere.node_id=%s</txt-record>
-    <txt-record>ninja.sphere.master=%t</txt-record>
-  </service>
-  <service>
-    <type>_ninja-homecloud-mqtt._tcp</type>
-    <port>1883</port>
-    <txt-record>ninja.sphere.user_id=%s</txt-record>
-    <txt-record>ninja.sphere.node_id=%s</txt-record>
-    <txt-record>ninja.sphere.master=%t</txt-record>
-  </service>
+	<name replace-wildcards="yes">{{.Serial}}</name>
+	{{if .Paired}}
+	<service>
+		<type>_ninja-homecloud-rest._tcp</type>
+		<port>80</port>
+		<txt-record>ninja.sphere.user_id={{.User}}</txt-record>
+		<txt-record>ninja.sphere.node_id={{.Serial}}</txt-record>
+		<txt-record>ninja.sphere.master={{.Master}}</txt-record>
+	</service>
+	<service>
+		<type>_ninja-homecloud-mqtt._tcp</type>
+		<port>1883</port>
+		<txt-record>ninja.sphere.user_id={{.User}}</txt-record>
+		<txt-record>ninja.sphere.node_id={{.Serial}}</txt-record>
+		<txt-record>ninja.sphere.master={{.Master}}</txt-record>
+	</service>
+	{{else}} 
+	<service>
+		<type>_ninja-serup-assistant-rest._tcp</type>
+		<port>8888</port>
+		<txt-record>ninja.sphere.node_id=%s</txt-record>
+	</service>
+	{{end}}
 </service-group>`
 
-	serviceDefinition = fmt.Sprintf(serviceDefinition,
-		config.Serial(),
-		config.MustString("userId"), config.Serial(), isMaster,
-		config.MustString("userId"), config.Serial(), isMaster)
+func updateSphereAvahiService(isPaired, isMaster bool) error {
 
-	log.Debugf("Saving service definition", serviceDefinition)
+	tmpl, err := template.New("avahi").Parse(src)
+
+	if err != nil {
+		return err
+	}
+
+	serviceDefinition := new(bytes.Buffer)
+
+	err = tmpl.Execute(serviceDefinition, map[string]interface{}{
+		"Serial": config.Serial(),
+		"Master": isMaster,
+		"Paired": isPaired,
+		"User":   config.String("", "userId"),
+	})
+
+	if err != nil {
+		return err
+	}
+
+	log.Debugf("Saving service definition", serviceDefinition.String())
 
 	if runtime.GOOS != "linux" {
 		log.Warningf("Avahi service definition is not being saved, as platform != linux")
 		return nil
 	}
 
-	return ioutil.WriteFile("/etc/avahi/services/ninjasphere.service", []byte(serviceDefinition), 0644)
+	return ioutil.WriteFile("/data/etc/avahi/services/ninjasphere.service", []byte(serviceDefinition.String()), 0644)
 }

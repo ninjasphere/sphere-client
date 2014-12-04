@@ -58,13 +58,20 @@ func Start() {
 		conn: conn,
 	}
 
+	if !client.isPaired() {
+		err = updateSphereAvahiService(false, false)
+		if err != nil {
+			log.Fatalf("Failed to update avahi service: %s", err)
+		}
+	}
+
 	client.updatePairingLight("black", false)
 
 	conn.SubscribeRaw("$sphere/bridge/status", client.onBridgeStatus)
 
 	client.start()
 
-	err = updateSphereAvahiService(client.master)
+	err = updateSphereAvahiService(true, client.master)
 	if err != nil {
 		log.Fatalf("Failed to update avahi service: %s", err)
 	}
