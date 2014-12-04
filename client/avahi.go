@@ -28,9 +28,9 @@ var src = `<?xml version="1.0" standalone="no"?>
 		<txt-record>ninja.sphere.node_id={{.Serial}}</txt-record>
 		<txt-record>ninja.sphere.master={{.Master}}</txt-record>
 	</service>
-	{{else}} 
+	{{else}}
 	<service>
-		<type>_ninja-serup-assistant-rest._tcp</type>
+		<type>_ninja-setup-assistant-rest._tcp</type>
 		<port>8888</port>
 		<txt-record>ninja.sphere.node_id=%s</txt-record>
 	</service>
