@@ -399,7 +399,9 @@ func parseMdnsInfo(field string) map[string]string {
 
 	for _, part := range strings.Split(field, "|") {
 		chunks := strings.Split(part, "=")
-		vals[chunks[0]] = chunks[1]
+		if len(chunks) == 2 {
+			vals[chunks[0]] = chunks[1]
+		}
 	}
 	return vals
 }
