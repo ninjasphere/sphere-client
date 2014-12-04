@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -339,6 +340,13 @@ func (c *client) pair() error {
 
 	if err != nil {
 		return fmt.Errorf("Failed to write credentials file: %s", err)
+	}
+
+	cmd := exec.Command("sync")
+	out, err := cmd.Output()
+
+	if err != nil {
+		return fmt.Errorf("Failed to call sync after saving credentials: %s - %s", err, out)
 	}
 
 	return nil
