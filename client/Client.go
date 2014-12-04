@@ -337,7 +337,8 @@ func (c *client) pair() error {
 		return fmt.Errorf("Failed to marshal credentials: %s", err)
 	}
 
-	err = ioutil.WriteFile(credsFile, credsJSON, 0600)
+	// XXX: HACK: TODO: CHANGE ME BACK TO 600
+	err = ioutil.WriteFile(credsFile, credsJSON, 0644)
 
 	if err != nil {
 		return fmt.Errorf("Failed to write credentials file: %s", err)
