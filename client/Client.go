@@ -319,7 +319,7 @@ func (c *client) pair() error {
 		creds.MasterNodeID = config.Serial()
 	}
 
-	credsFile := config.String("/etc/opt/ninja/credentials.json", "credentialFile")
+	credsFile := config.String("/data/etc/opt/ninja/credentials.json", "credentialFile")
 
 	log.Infof("Saving credentials to %s", credsFile)
 
@@ -328,7 +328,13 @@ func (c *client) pair() error {
 		return fmt.Errorf("Failed to marshal credentials: %s", err)
 	}
 
-	return ioutil.WriteFile(credsFile, credsJSON, 0700)
+	err = ioutil.WriteFile(credsFile, credsJSON, 0600)
+
+	if err != nil {
+		return fmt.Errorf("Failed to write credentials file: %s", err)
+	}
+
+	return nil
 }
 
 type nodeClaimResponse struct {
