@@ -104,7 +104,15 @@ func (c *client) start() {
 
 	if c.masterID == config.Serial() {
 		log.Infof("I am the master, starting HomeCloud.")
-		c.conn.SendNotification("$node/"+config.Serial()+"/module/start", "sphere-go-homecloud")
+
+		go func() {
+			for {
+				c.conn.SendNotification("$node/"+config.Serial()+"/module/start", "sphere-go-homecloud")
+
+				time.Sleep(time.Second * 5)
+			}
+		}()
+
 		c.master = true
 	} else {
 		log.Infof("I am a slave. The master is %s", c.masterID)
