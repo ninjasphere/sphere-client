@@ -32,7 +32,7 @@ var src = `<?xml version="1.0" standalone="no"?>
 	<service>
 		<type>_ninja-setup-assistant-rest._tcp</type>
 		<port>8888</port>
-		<txt-record>ninja.sphere.node_id=%s</txt-record>
+		<txt-record>ninja.sphere.node_id={{.Serial}}</txt-record>
 	</service>
 	{{end}}
 </service-group>`
