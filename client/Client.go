@@ -257,7 +257,7 @@ func (c *client) onBridgeStatus(status *bridgeStatus) bool {
 	if !status.Configured && c.master {
 		log.Infof("Configuring bridge")
 
-		c.conn.PublishRaw("$sphere/bridge/connect", map[string]string{
+		c.conn.PublishRawSingleValue("$sphere/bridge/connect", map[string]string{
 			"url":   config.MustString("cloud", "url"),
 			"token": config.MustString("token"),
 		})
