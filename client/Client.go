@@ -60,7 +60,7 @@ func Start() {
 	}
 
 	if !client.isPaired() {
-		err = updateSphereAvahiService(false, false)
+		err = UpdateSphereAvahiService(false, false)
 		if err != nil {
 			log.Fatalf("Failed to update avahi service: %s", err)
 		}
@@ -72,7 +72,7 @@ func Start() {
 
 	client.start()
 
-	err = updateSphereAvahiService(true, client.master)
+	err = UpdateSphereAvahiService(true, client.master)
 	if err != nil {
 		log.Fatalf("Failed to update avahi service: %s", err)
 	}

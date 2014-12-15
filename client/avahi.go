@@ -37,7 +37,7 @@ var src = `<?xml version="1.0" standalone="no"?>
 	{{end}}
 </service-group>`
 
-func updateSphereAvahiService(isPaired, isMaster bool) error {
+func UpdateSphereAvahiService(isPaired, isMaster bool) error {
 
 	tmpl, err := template.New("avahi").Parse(src)
 
