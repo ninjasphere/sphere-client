@@ -221,7 +221,7 @@ func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []strin
 
 			if !hasSource {
 				if masterToSlave {
-					payload["$mesh-source"] = "master"
+					payload["$mesh-source"] = c.masterID
 				} else {
 					payload["$mesh-source"] = config.Serial()
 				}
