@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jonaz/mdns"
+	"github.com/hashicorp/mdns"
 	"github.com/ninjasphere/go-ninja/api"
 	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/config"
