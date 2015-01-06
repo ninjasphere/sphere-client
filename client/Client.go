@@ -59,7 +59,7 @@ func Start() {
 		conn: conn,
 	}
 
-	if !client.isPaired() {
+	if !config.IsPaired() {
 		err = UpdateSphereAvahiService(false, false)
 		if err != nil {
 			log.Fatalf("Failed to update avahi service: %s", err)
@@ -81,7 +81,7 @@ func Start() {
 
 func (c *client) start() {
 
-	if !c.isPaired() {
+	if !config.IsPaired() {
 		log.Infof("Client is unpaired. Attempting to pair.")
 		if err := c.pair(); err != nil {
 			log.Infof("An error occurred while pairing. Restarting. error: %s", err)
@@ -92,7 +92,7 @@ func (c *client) start() {
 		// We reload the config so the creds can be picked up
 		config.MustRefresh()
 
-		if !c.isPaired() {
+		if !config.IsPaired() {
 			log.Infof("Pairing appeared successful, but I did not get the credentials. Restarting.")
 			os.Exit(1)
 		}
@@ -175,9 +175,6 @@ func (c *client) findPeers() {
 	// Start the lookup
 	mdns.Lookup("_ninja-homecloud-mqtt._tcp", entriesCh)
 	close(entriesCh)
-}
-func (c *client) isPaired() bool {
-	return config.HasString("siteId") && config.HasString("token") && config.HasString("userId") && config.HasString("nodeId")
 }
 
 func (c *client) bridgeToMaster(host net.IP, port int) {
