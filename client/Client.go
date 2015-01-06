@@ -191,7 +191,7 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 
 	local := c.conn.GetMqttClient()
 
-	bridgeTopics := []string{"$node/#", "$device/#"}
+	bridgeTopics := []string{"$node/#", "$device/#", "$home/#"}
 
 	c.bridgeMqtt(master, local, true, bridgeTopics)
 	c.bridgeMqtt(local, master, false, bridgeTopics)
