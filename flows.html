@@ -9,26 +9,36 @@
 
 <textarea id="paired">
 start=>start: Startup
-shutdown=>end: Restart process
+ispaired=>condition: Is paired?
+pair=>operation: Attempt to pair
+paired=>condition: Pairing successful?
+creds=>operation: Write credentials
+shutdown=>end: Start again
 net=>condition: Internet connection?
 find=>operation: Find peers via MDNS
 update=>operation: Update master_node_id
+and master_update_id
+update2=>operation: Write new master_node_id
 and master_update_id
 newer=>condition: Do we have the
 latest master_update_id
 on the network?
 ismaster=>condition: Are we master?
 slave=>operation: Bridge to master
-slave2=>operation: (Temporary)
-Start any drivers we
-can run on a slave
+havemaster=>condition: Master visible?
 master=>operation: Start HomeCloud
+unpaired=>condition: ... Unpaired?
+clear=>operation: Clear credentials
+notify=>operation: Show error on LED
 
-start->net(no)->find->newer(yes)->ismaster
+start->ispaired(yes)->net(no)->find->newer(yes)->ismaster
+ispaired(no)->pair->paired(no)->pair
+paired(yes)->creds->update2->shutdown
 net(yes)->update->find
-newer(no)->shutdown
+newer(no)->update2->shutdown
 ismaster(yes)->master
-ismaster(no)->slave->slave2
+ismaster(no)->havemaster(yes)->slave->unpaired(yes)->clear->shutdown
+havemaster(no)->notify->shutdown
 </textarea>
 
 <script>

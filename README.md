@@ -9,4 +9,4 @@ When Paired
 -----------
 (note: Not all of this is coded yet!)
 
-![Paired flow](https://s3-ap-southeast-2.amazonaws.com/uploads-au.hipchat.com/25403/256486/3QryolJKFXuL9pM/untitled.svg)
+![Paired flow](https://s3-ap-southeast-2.amazonaws.com/uploads-au.hipchat.com/25403/256486/mFq6cjO27N3Uji6/untitled.svg)
