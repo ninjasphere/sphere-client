@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,10 +37,9 @@ our process.
 var log = logger.GetLogger("Client")
 
 type client struct {
-	conn     *ninja.Connection
-	master   bool
-	masterID string
-	bridged  bool
+	conn    *ninja.Connection
+	master  bool
+	bridged bool
 }
 
 type bridgeStatus struct {
@@ -48,6 +48,7 @@ type bridgeStatus struct {
 }
 
 func Start() {
+
 	log.Infof("Starting client on Node: %s", config.Serial())
 
 	conn, err := ninja.Connect("client")
@@ -98,11 +99,31 @@ func (c *client) start() {
 		}
 	}
 
-	log.Infof("Client is paired. Site: %s User: %s", config.MustString("siteId"), config.MustString("userId"))
+	log.Infof("Client is paired. User: %s", config.MustString("userId"))
 
-	c.masterID = config.String(config.Serial(), "masterNodeId")
+	mesh, err := refreshMeshInfo()
 
-	if c.masterID == config.Serial() {
+	if err == errorUnauthorised {
+		log.Warningf("UNAUTHORISED! Unpairing.")
+		c.unpair()
+		return
+	}
+
+	if err != nil {
+		log.Warningf("Failed to refresh mesh info: %s", err)
+	} else {
+		log.Debugf("Got mesh info: %+v", mesh)
+	}
+
+	config.MustRefresh()
+
+	if !config.HasString("masterNodeId") {
+		log.Warningf("We don't have any mesh information. Which is unlikely. But we can't do anything without it, so restarting client.")
+		time.Sleep(time.Second * 10)
+		os.Exit(0)
+	}
+
+	if config.MustString("masterNodeId") == config.Serial() {
 		log.Infof("I am the master, starting HomeCloud.")
 
 		go func() {
@@ -115,7 +136,7 @@ func (c *client) start() {
 
 		c.master = true
 	} else {
-		log.Infof("I am a slave. The master is %s", c.masterID)
+		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 	}
 
 	go func() {
@@ -146,29 +167,69 @@ func (c *client) findPeers() {
 				continue
 			}
 
-			if id == c.masterID {
+			user, ok := info["ninja.sphere.user_id"]
+			if !ok {
+				log.Warningf("Found a node, but couldn't get it's user id. %v", entry)
+				continue
+			}
+
+			site, ok := info["ninja.sphere.site_id"]
+			siteUpdated, ok := info["ninja.sphere.site_updated"]
+			masterNodeId, ok := info["ninja.sphere.master_node_id"]
+
+			if user == config.MustString("userId") {
+
+				if site == config.MustString("siteId") {
+					log.Infof("Found a sibling node (%s) - %s", id, entry.Addr)
+
+					siteUpdatedInt, err := strconv.ParseInt(siteUpdated, 10, 64)
+
+					if err != nil {
+						log.Warningf("Failed to read the site_updated field (%s) on node %s - %s", siteUpdated, id, entry.Addr)
+					} else {
+						if int(siteUpdatedInt) > config.MustInt("siteUpdated") {
+
+							log.Infof("Found node (%s - %s) with a newer site update time (%s).", id, entry.Addr, siteUpdated)
+
+							info := &meshInfo{
+								MasterNodeID: masterNodeId,
+								SiteID:       config.MustString("siteId"),
+								SiteUpdated:  int(siteUpdatedInt),
+							}
+
+							err := saveMeshInfo(info)
+							if err != nil {
+								log.Warningf("Failed to save updated mesh info from node: %s - %+v", err, info)
+							}
+
+							if masterNodeId == config.MustString("masterNodeId") {
+								log.Infof("Updated master id is the same (%s). Moving on with our lives.", masterNodeId)
+							} else {
+								log.Infof("Master id has changed (was %s now %s). Rebooting", config.MustString("masterNodeId"), masterNodeId)
+
+								reboot()
+								return
+							}
+						}
+					}
+
+				} else {
+					log.Warningf("Found a node owned by the same user (%s) but from a different site (%s) - ID:%s - %s", user, site, id, entry.Addr)
+				}
+
+			} else {
+				log.Infof("Found a node owned by another user (%s) (%s) - %s", user, id, entry.Addr)
+			}
+
+			if id == config.MustString("masterNodeId") {
 				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
 
 				if !c.bridged {
 					c.bridgeToMaster(entry.Addr, entry.Port)
 					c.bridged = true
 				}
-			} else {
-
-				user, ok := info["ninja.sphere.user_id"]
-
-				if !ok {
-					log.Warningf("Found a node, but couldn't get it's user id. %v", entry)
-					continue
-				}
-
-				if user == config.MustString("userId") {
-					log.Infof("Found a sibling node (%s) - %s", id, entry.Addr)
-				} else {
-					log.Infof("Found a node owned by another user (%s) (%s) - %s", user, id, entry.Addr)
-				}
-
 			}
+
 		}
 	}()
 
@@ -221,7 +282,7 @@ func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []strin
 
 			if !hasSource {
 				if masterToSlave {
-					payload["$mesh-source"] = c.masterID
+					payload["$mesh-source"] = config.MustString("masterNodeId")
 				} else {
 					payload["$mesh-source"] = config.Serial()
 				}
@@ -326,14 +387,14 @@ func (c *client) pair() error {
 		}
 	}
 
-	log.Infof("Got credentials. Joining site: %s user: %s", creds.SiteID, creds.UserID)
+	log.Infof("Got credentials. User: %s", creds.UserID)
 
-	if creds.MasterNodeID == "" {
-		log.Warningf("Cloud did not give us the master node id. So setting it to ourself (%s)", config.Serial())
-		creds.MasterNodeID = config.Serial()
-	}
+	return saveCreds(creds)
+}
 
-	credsFile := config.String("/data/etc/opt/ninja/credentials.json", "credentialFile")
+var credsFile = config.String("/data/etc/opt/ninja/credentials.json", "credentialFile")
+
+func saveCreds(creds *credentials) error {
 
 	log.Infof("Saving credentials to %s", credsFile)
 
@@ -359,25 +420,25 @@ func (c *client) pair() error {
 	return nil
 }
 
-type nodeClaimResponse struct {
-	Type string              `json:"type"`
-	Data responseCredentials `json:"data"`
+func (c *client) unpair() {
+	log.Infof("Unpairing")
+	c.conn.SendNotification(fmt.Sprintf("$node/%s/unpair", config.Serial()), nil)
 }
 
-type responseCredentials struct {
-	UserID       string `json:"user_id"`
-	SiteID       string `json:"site_id"`
-	NodeID       string `json:"node_id"`
-	Token        string `json:"token"`
-	MasterNodeID string `json:"master_node_id"`
+type nodeClaimResponse struct {
+	Type string `json:"type"`
+	Data struct {
+		UserID           string `json:"user_id"`
+		NodeID           string `json:"node_id"`
+		Token            string `json:"token"`
+		SphereNetworkKey string `json:"sphere_network_key"`
+	} `json:"data"`
 }
 
 type credentials struct {
-	UserID       string `json:"userId"`
-	SiteID       string `json:"siteId"`
-	NodeID       string `json:"nodeId"`
-	Token        string `json:"token"`
-	MasterNodeID string `json:"masterNodeId"`
+	UserID           string `json:"userId"`
+	Token            string `json:"token"`
+	SphereNetworkKey string `json:"sphereNetworkKey"`
 }
 
 func activate(client *http.Client, url string) (*credentials, error) {
@@ -407,12 +468,14 @@ func activate(client *http.Client, url string) (*credentials, error) {
 	var response nodeClaimResponse
 	err = json.Unmarshal(body, &response)
 
+	if response.Data.NodeID != config.Serial() {
+		log.Fatalf("Incorrect node id returned from pairing! Expected %s got %s", config.Serial(), response.Data.NodeID)
+	}
+
 	return &credentials{
-		UserID:       response.Data.UserID,
-		SiteID:       response.Data.SiteID,
-		NodeID:       response.Data.NodeID,
-		Token:        response.Data.Token,
-		MasterNodeID: response.Data.MasterNodeID,
+		UserID:           response.Data.UserID,
+		Token:            response.Data.Token,
+		SphereNetworkKey: response.Data.SphereNetworkKey,
 	}, err
 }
 
