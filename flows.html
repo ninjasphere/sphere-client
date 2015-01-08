@@ -8,36 +8,39 @@
 <div id="paired-flow"></div>
 
 <textarea id="paired">
-start=>start: Startup
-ispaired=>condition: Is paired?
+start=>start: Start
+ispaired=>condition: Are we paired?
 pair=>operation: Attempt to pair
 paired=>condition: Pairing successful?
 creds=>operation: Write credentials
 shutdown=>end: Start again
-net=>condition: Internet connection?
+net=>condition: Do we have an
+internet connection?
 find=>operation: Find peers via MDNS
-update=>operation: Update master_node_id
-and master_update_id
-update2=>operation: Write new master_node_id
-and master_update_id
+update=>operation: Refresh mesh info
+from cloud
+valid=>condition: Is our token valid?
+unpair=>operation: Send unpaired notification
+update2=>operation: Write new mesh info
 newer=>condition: Do we have the
-latest master_update_id
-on the network?
+latest mesh info on
+the network?
 ismaster=>condition: Are we master?
 slave=>operation: Bridge to master
 havemaster=>condition: Master visible?
 master=>operation: Start HomeCloud
-unpaired=>condition: ... Unpaired?
-clear=>operation: Clear credentials
 notify=>operation: Show error on LED
+disconnected=>condition: Have we been
+disconnected?
 
 start->ispaired(yes)->net(no)->find->newer(yes)->ismaster
 ispaired(no)->pair->paired(no)->pair
-paired(yes)->creds->update2->shutdown
-net(yes)->update->find
+paired(yes)->creds(right)->update2->shutdown
+net(yes)->update->valid(yes)->find
+valid(no, left)->unpair
 newer(no)->update2->shutdown
-ismaster(yes)->master
-ismaster(no)->havemaster(yes)->slave->unpaired(yes)->clear->shutdown
+ismaster(yes)->master->disconnected(yes)->shutdown
+ismaster(no)->havemaster(yes)->slave
 havemaster(no)->notify->shutdown
 </textarea>
 
