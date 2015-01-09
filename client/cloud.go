@@ -56,21 +56,26 @@ type restResponse struct {
 func getNodes() (map[string]Node, error) {
 	var data []Node
 	err := req(config.MustString("cloud", "nodes"), &data)
+	log.Debugf("Fetched nodes: %+v", data)
 
 	m := make(map[string]Node)
 	for _, n := range data {
 		m[n.ID] = n
 	}
+
 	return m, err
 }
 
 func getSites() (map[string]Site, error) {
 	var data []Site
 	err := req(config.MustString("cloud", "sites"), &data)
+	log.Debugf("Fetched sites: %+v", data)
+
 	m := make(map[string]Site)
 	for _, s := range data {
 		m[s.ID] = s
 	}
+
 	return m, err
 }
 
