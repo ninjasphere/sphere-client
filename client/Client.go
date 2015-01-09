@@ -153,9 +153,9 @@ func (c *client) findPeers() {
 	entriesCh := make(chan *mdns.ServiceEntry, 4)
 	go func() {
 		for entry := range entriesCh {
-			info := parseMdnsInfo(entry.Info)
+			nodeInfo := parseMdnsInfo(entry.Info)
 
-			id, ok := info["ninja.sphere.node_id"]
+			id, ok := nodeInfo["ninja.sphere.node_id"]
 
 			if !ok {
 				log.Warningf("Found a node, but couldn't get it's node id. %v", entry)
@@ -167,15 +167,15 @@ func (c *client) findPeers() {
 				continue
 			}
 
-			user, ok := info["ninja.sphere.user_id"]
+			user, ok := nodeInfo["ninja.sphere.user_id"]
 			if !ok {
 				log.Warningf("Found a node, but couldn't get it's user id. %v", entry)
 				continue
 			}
 
-			site, ok := info["ninja.sphere.site_id"]
-			siteUpdated, ok := info["ninja.sphere.site_updated"]
-			masterNodeId, ok := info["ninja.sphere.master_node_id"]
+			site, ok := nodeInfo["ninja.sphere.site_id"]
+			siteUpdated, ok := nodeInfo["ninja.sphere.site_updated"]
+			masterNodeId, ok := nodeInfo["ninja.sphere.master_node_id"]
 
 			if user == config.MustString("userId") {
 
