@@ -22,6 +22,7 @@ var src = `<?xml version="1.0" standalone="no"?>
 		<txt-record>ninja.sphere.node_id={{.Serial}}</txt-record>
 		<txt-record>ninja.sphere.site_id={{.Site}}</txt-record>
 		<txt-record>ninja.sphere.site_updated={{.SiteUpdated}}</txt-record>
+		<txt-record>ninja.sphere.master=true</txt-record>
 	</service>
 		{{end}}
 	<service>
