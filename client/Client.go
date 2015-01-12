@@ -21,19 +21,6 @@ import (
 	"github.com/ninjasphere/go-ninja/logger"
 )
 
-/*
-
-TO DO:
-
-On startup, if we have internet, we need to get the lastest master node id and master update node id
-from the cloud (a rest service).
-
-The update id needs to be exported over mdns, and is used to see if we are up to date with the latest
-master id. If there is a newer one, we need to shut homecloud and all the drivers down and restart
-our process.
-
-*/
-
 var log = logger.GetLogger("Client")
 
 type client struct {
@@ -135,6 +122,8 @@ func (c *client) start() {
 		}()
 
 		c.master = true
+
+		c.exportNodeDevice()
 	} else {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 	}
@@ -145,6 +134,34 @@ func (c *client) start() {
 			time.Sleep(time.Second * 30)
 		}
 	}()
+}
+
+func (c *client) exportNodeDevice() {
+
+	device := &NodeDevice{ninja.LoadModuleInfo("./package.json")}
+
+	// TODO: Make some generic way to see if homecloud is running.
+	// XXX: Fix this. It's ugly.
+	for {
+		thingModel := c.conn.GetServiceClient("$home/services/ThingModel")
+		err := thingModel.Call("FetchByDeviceId", "", nil, time.Second*5)
+		//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
+
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second * 5)
+	}
+
+	for {
+		err := c.conn.ExportDevice(device)
+		if err == nil {
+			break
+		}
+
+		log.Warningf("Failed to export node device. Retrying in 5 sec: %s", err)
+		time.Sleep(time.Second * 5)
+	}
 }
 
 func (c *client) findPeers() {
@@ -175,7 +192,7 @@ func (c *client) findPeers() {
 
 			site, ok := nodeInfo["ninja.sphere.site_id"]
 			siteUpdated, ok := nodeInfo["ninja.sphere.site_updated"]
-			masterNodeId, ok := nodeInfo["ninja.sphere.master_node_id"]
+			masterNodeID, ok := nodeInfo["ninja.sphere.master_node_id"]
 
 			if user == config.MustString("userId") {
 
@@ -192,7 +209,7 @@ func (c *client) findPeers() {
 							log.Infof("Found node (%s - %s) with a newer site update time (%s).", id, entry.Addr, siteUpdated)
 
 							info := &meshInfo{
-								MasterNodeID: masterNodeId,
+								MasterNodeID: masterNodeID,
 								SiteID:       config.MustString("siteId"),
 								SiteUpdated:  int(siteUpdatedInt),
 							}
@@ -202,10 +219,10 @@ func (c *client) findPeers() {
 								log.Warningf("Failed to save updated mesh info from node: %s - %+v", err, info)
 							}
 
-							if masterNodeId == config.MustString("masterNodeId") {
-								log.Infof("Updated master id is the same (%s). Moving on with our lives.", masterNodeId)
+							if masterNodeID == config.MustString("masterNodeId") {
+								log.Infof("Updated master id is the same (%s). Moving on with our lives.", masterNodeID)
 							} else {
-								log.Infof("Master id has changed (was %s now %s). Rebooting", config.MustString("masterNodeId"), masterNodeId)
+								log.Infof("Master id has changed (was %s now %s). Rebooting", config.MustString("masterNodeId"), masterNodeID)
 
 								reboot()
 								return
@@ -227,6 +244,7 @@ func (c *client) findPeers() {
 				if !c.bridged {
 					c.bridgeToMaster(entry.Addr, entry.Port)
 					c.bridged = true
+					c.exportNodeDevice()
 				}
 			}
 
