@@ -143,9 +143,8 @@ func (c *client) exportNodeDevice() {
 	// TODO: Make some generic way to see if homecloud is running.
 	// XXX: Fix this. It's ugly.
 	for {
-		thingModel := c.conn.GetServiceClient("$home/services/ThingModel")
-		err := thingModel.Call("FetchByDeviceId", "", nil, time.Second*5)
-		//err = client.Call("fetch", "c7ac05e0-9999-4d93-bfe3-a0b4bb5e7e78", &thing)
+		siteModel := c.conn.GetServiceClient("$home/services/SiteModel")
+		err := siteModel.Call("fetch", config.MustString("siteId"), nil, time.Second*5)
 
 		if err == nil {
 			break
