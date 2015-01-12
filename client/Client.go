@@ -267,8 +267,7 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 	log.Infof("Connecting to master %s using cid:%s", mqttURL, clientID)
 
 	master := bus.MustConnect(mqttURL, clientID)
-
-	local := c.conn.GetMqttClient()
+	local := bus.MustConnect(fmt.Sprintf("%s:%d", config.MustString("mqtt.host"), config.MustInt("mqtt.port")), "meshing")
 
 	bridgeTopics := []string{"$node/#", "$device/#", "$home/#"}
 
