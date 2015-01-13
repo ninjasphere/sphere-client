@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -274,38 +275,40 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 	c.bridgeMqtt(local, master, false, bridgeTopics)
 }
 
+type meshMessage struct {
+	Source *string `json:"$mesh-source"`
+}
+
 // bridgeMqtt connects one mqtt broker to another. Shouldn't probably be doing this. But whatever.
 func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []string) {
 
-	var payload map[string]interface{}
-	onMessage := func(topic string, payloadBytes []byte) {
-		payload = map[string]interface{}{}
-		json.Unmarshal(payloadBytes, &payload)
-
-		source, hasSource := payload["$mesh-source"]
+	onMessage := func(topic string, payload []byte) {
+		var msg meshMessage
+		json.Unmarshal(payload, &msg)
 
 		interesting := false
 
 		if masterToSlave {
 			// Interesting if it's from the master or one of the other slaves
-			interesting = !hasSource || (source.(string) != config.Serial())
+			interesting = msg.Source == nil || (*msg.Source != config.Serial())
 		} else {
 			// Interesting if it's from me
-			interesting = !hasSource
+			interesting = msg.Source == nil
 		}
+
+		log.Infof("Mesh master2slave:%t topic:%s interesting:%t", masterToSlave, topic, interesting)
 
 		if interesting {
 
-			if !hasSource {
+			if msg.Source == nil {
 				if masterToSlave {
-					payload["$mesh-source"] = config.MustString("masterNodeId")
+					payload = addMeshSource(config.MustString("masterNodeId"), payload)
 				} else {
-					payload["$mesh-source"] = config.Serial()
+					payload = addMeshSource(config.Serial(), payload)
 				}
 			}
 
-			jsonPayload, _ := json.Marshal(payload)
-			to.Publish(topic, jsonPayload)
+			to.Publish(topic, payload)
 		}
 
 	}
@@ -317,6 +320,10 @@ func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []strin
 		}
 	}
 
+}
+
+func addMeshSource(source string, payload []byte) []byte {
+	return bytes.Replace(payload, []byte("{"), []byte(`{"$mesh-source":"`+source+`", `), 1)
 }
 
 func (c *client) onBridgeStatus(status *bridgeStatus) bool {
