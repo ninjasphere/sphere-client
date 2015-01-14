@@ -20,6 +20,7 @@ import (
 	"github.com/ninjasphere/go-ninja/bus"
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
+	"github.com/ninjasphere/go-ninja/model"
 )
 
 var log = logger.GetLogger("Client")
@@ -65,6 +66,13 @@ func Start() {
 	if err != nil {
 		log.Fatalf("Failed to update avahi service: %s", err)
 	}
+
+	go func() {
+		err := client.ensureTimezoneIsSet()
+		if err != nil {
+			log.Warningf("Could not save timezone: %s", err)
+		}
+	}()
 
 }
 
@@ -446,6 +454,31 @@ func saveCreds(creds *credentials) error {
 func (c *client) unpair() {
 	log.Infof("Unpairing")
 	c.conn.SendNotification(fmt.Sprintf("$node/%s/unpair", config.Serial()), nil)
+}
+
+func (c *client) ensureTimezoneIsSet() error {
+
+	siteModel := c.conn.GetServiceClient("$home/services/SiteModel")
+	var site *model.Site
+
+	for {
+		err := siteModel.Call("fetch", config.MustString("siteId"), site, time.Second*5)
+		if err == nil && site.TimeZoneID != nil {
+
+			cmd := exec.Command("with-rw", "ln", "-s", "-f", "/usr/share/zoneinfo/"+*site.TimeZoneID, "/etc/localtime")
+			_, err := cmd.Output()
+
+			if err != nil {
+				return err
+			}
+
+			break
+		}
+		time.Sleep(time.Second * 2)
+	}
+
+	return nil
+
 }
 
 type nodeClaimResponse struct {
