@@ -298,6 +298,12 @@ type meshMessage struct {
 func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []string) {
 
 	onMessage := func(topic string, payload []byte) {
+
+		if payload[0] != '{' {
+			log.Warningf("Invalid payload (should be a json-rpc object): %s", payload)
+			return
+		}
+
 		var msg meshMessage
 		json.Unmarshal(payload, &msg)
 
