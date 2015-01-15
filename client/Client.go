@@ -411,8 +411,8 @@ func (c *client) pair() error {
 
 		if err != nil {
 			log.Warningf("Activation error : %s", err)
-			log.Warningf("Sleeping for 10sec")
-			time.Sleep(time.Second * 10)
+			log.Warningf("Sleeping for 3sec")
+			time.Sleep(time.Second * 3)
 		} else if creds != nil {
 			break
 		}
