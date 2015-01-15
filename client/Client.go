@@ -139,6 +139,9 @@ func (c *client) start() {
 		c.exportNodeDevice()
 	} else {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
+
+		cmd := exec.Command("stop", "sphere-director")
+		cmd.Output()
 	}
 
 	go func() {
