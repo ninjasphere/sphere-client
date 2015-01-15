@@ -93,6 +93,10 @@ func (c *client) start() {
 			log.Infof("Pairing appeared successful, but I did not get the credentials. Restarting.")
 			os.Exit(1)
 		}
+
+		log.Infof("Restarting sphere-client.") // XXX: Shouldn't need to do this. Just testing.
+		os.Exit(0)
+
 	}
 
 	log.Infof("Client is paired. User: %s", config.MustString("userId"))
