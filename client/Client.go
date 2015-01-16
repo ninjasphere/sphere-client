@@ -123,13 +123,8 @@ func (c *client) start() {
 	if config.MustString("masterNodeId") == config.Serial() {
 		log.Infof("I am the master, starting HomeCloud.")
 
-		go func() {
-			for {
-				c.conn.SendNotification("$node/"+config.Serial()+"/module/start", "sphere-go-homecloud")
-
-				time.Sleep(time.Second * 5)
-			}
-		}()
+		cmd := exec.Command("start", "sphere-homecloud")
+		cmd.Output()
 
 		c.master = true
 
@@ -137,6 +132,7 @@ func (c *client) start() {
 	} else {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 
+		// TODO: Remove this when we are running drivers on slaves
 		cmd := exec.Command("stop", "sphere-director")
 		cmd.Output()
 	}
