@@ -125,10 +125,9 @@ func (c *client) start() {
 
 		cmd := exec.Command("start", "sphere-homecloud")
 		cmd.Output()
+		go c.exportNodeDevice()
 
 		c.master = true
-
-		c.exportNodeDevice()
 	} else {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 
