@@ -465,11 +465,13 @@ func (c *client) unpair() {
 func (c *client) ensureTimezoneIsSet() error {
 
 	siteModel := c.conn.GetServiceClient("$home/services/SiteModel")
-	var site *model.Site
+	var site model.Site
 
 	for {
-		err := siteModel.Call("fetch", config.MustString("siteId"), site, time.Second*5)
+		err := siteModel.Call("fetch", config.MustString("siteId"), &site, time.Second*5)
 		if err == nil && site.TimeZoneID != nil {
+
+			log.Infof("Saving timezone: %s", *site.TimeZoneID)
 
 			cmd := exec.Command("with-rw", "ln", "-s", "-f", "/usr/share/zoneinfo/"+*site.TimeZoneID, "/etc/localtime")
 			_, err := cmd.Output()
