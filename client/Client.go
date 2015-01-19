@@ -134,8 +134,7 @@ func (c *client) start() {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 
 		// TODO: Remove this when we are running drivers on slaves
-		cmd := exec.Command("stop", "sphere-director")
-		cmd.Output()
+		exec.Command("stop", "sphere-director")
 	}
 
 	go func() {
