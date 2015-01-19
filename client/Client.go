@@ -62,6 +62,8 @@ func Start() {
 
 	client.start()
 
+	log.Infof("Client started.")
+
 	err = UpdateSphereAvahiService(true, client.master)
 	if err != nil {
 		log.Fatalf("Failed to update avahi service: %s", err)
@@ -137,6 +139,9 @@ func (c *client) start() {
 	}
 
 	go func() {
+
+		log.Infof("Starting search for peers")
+
 		for {
 			c.findPeers()
 			time.Sleep(time.Second * 30)
@@ -157,6 +162,8 @@ func (c *client) exportNodeDevice() {
 		if err == nil {
 			break
 		}
+
+		log.Infof("Failed to fetch siteid from sitemodel: %s", err)
 		time.Sleep(time.Second * 5)
 	}
 
