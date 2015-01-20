@@ -145,7 +145,8 @@ func (c *client) start() {
 		log.Infof("I am a slave. The master is %s", config.MustString("masterNodeId"))
 
 		// TODO: Remove this when we are running drivers on slaves
-		exec.Command("stop", "sphere-director")
+		cmd := exec.Command("stop", "sphere-director")
+		cmd.Output()
 
 		c.masterReceiveTimeout = time.AfterFunc(orphanTimeout, func() {
 			c.setOrphaned()
