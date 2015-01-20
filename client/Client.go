@@ -196,10 +196,16 @@ func (c *client) exportNodeDevice() {
 
 func (c *client) findPeers() {
 
+	query := "_ninja-homecloud-mqtt._tcp"
+
 	// Make a channel for results and start listening
 	entriesCh := make(chan *mdns.ServiceEntry, 4)
 	go func() {
 		for entry := range entriesCh {
+
+			if !strings.Contains(entry.Name, query) {
+				continue
+			}
 			nodeInfo := parseMdnsInfo(entry.Info)
 
 			id, ok := nodeInfo["ninja.sphere.node_id"]
@@ -287,7 +293,7 @@ func (c *client) findPeers() {
 	}()
 
 	// Start the lookup
-	mdns.Lookup("_ninja-homecloud-mqtt._tcp", entriesCh)
+	mdns.Lookup(query, entriesCh)
 	close(entriesCh)
 }
 
