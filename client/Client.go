@@ -21,14 +21,23 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
+
+	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 )
 
 var log = logger.GetLogger("Client")
 
+var orphanTimeout = config.Duration(time.Second*30, "client.orphanTimeout")
+
 type client struct {
-	conn    *ninja.Connection
-	master  bool
-	bridged bool
+	conn                 *ninja.Connection
+	master               bool
+	bridged              bool
+	led                  *ninja.ServiceClient
+	foundMaster          chan bool
+	localBus             bus.Bus
+	masterBus            bus.Bus
+	masterReceiveTimeout *time.Timer
 }
 
 type bridgeStatus struct {
@@ -46,7 +55,9 @@ func Start() {
 	}
 
 	client := &client{
-		conn: conn,
+		conn:        conn,
+		led:         conn.GetServiceClient("$home/led-controller"),
+		foundMaster: make(chan bool),
 	}
 
 	if !config.IsPaired() {
@@ -135,6 +146,11 @@ func (c *client) start() {
 
 		// TODO: Remove this when we are running drivers on slaves
 		exec.Command("stop", "sphere-director")
+
+		c.masterReceiveTimeout = time.AfterFunc(orphanTimeout, func() {
+			c.setOrphaned()
+		})
+
 	}
 
 	go func() {
@@ -254,6 +270,11 @@ func (c *client) findPeers() {
 			if id == config.MustString("masterNodeId") {
 				log.Infof("Found the master node (%s) - %s", id, entry.Addr)
 
+				select {
+				case c.foundMaster <- true:
+				default:
+				}
+
 				if !c.bridged {
 					c.bridgeToMaster(entry.Addr, entry.Port)
 					c.bridged = true
@@ -269,6 +290,37 @@ func (c *client) findPeers() {
 	close(entriesCh)
 }
 
+func (c *client) setOrphaned() {
+	log.Infof("Client has been orphaned")
+
+	c.bridged = false
+	if c.localBus != nil {
+		c.localBus.Destroy()
+		c.masterBus.Destroy()
+	}
+
+	err := c.led.Call("disableControl", nil, nil, time.Second*5)
+	if err != nil {
+		log.Warningf("Failed to disable control on LED controller: %s", err)
+	}
+
+	err = c.led.Call("displayIcon", ledmodel.IconRequest{
+		Icon: "orphaned.gif",
+	}, nil, time.Second)
+	if err != nil {
+		log.Infof("Failed to display orphaned image on LED controller: %s", err)
+	}
+}
+
+func (c *client) setUnorphaned() {
+	log.Infof("Client has been unorphaned")
+
+	err := c.led.Call("enableControl", nil, nil, time.Second*5)
+	if err != nil {
+		log.Warningf("Failed to disable control on LED controller: %s", err)
+	}
+}
+
 func (c *client) bridgeToMaster(host net.IP, port int) {
 
 	log.Debugf("Bridging to the master: %s:%d", host, port)
@@ -279,13 +331,43 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 
 	log.Infof("Connecting to master %s using cid:%s", mqttURL, clientID)
 
-	master := bus.MustConnect(mqttURL, clientID)
-	local := bus.MustConnect(fmt.Sprintf("%s:%d", config.MustString("mqtt.host"), config.MustInt("mqtt.port")), "meshing")
+	c.masterBus = bus.MustConnect(mqttURL, clientID)
+	c.localBus = bus.MustConnect(fmt.Sprintf("%s:%d", config.MustString("mqtt.host"), config.MustInt("mqtt.port")), "meshing")
+
+	log.Infof("Connected to master? %t", c.masterBus.Connected())
+
+	if c.masterBus.Connected() {
+		c.setUnorphaned()
+	} else {
+		c.setOrphaned()
+	}
+
+	c.masterBus.OnDisconnect(func() {
+		log.Infof("Disconnected from master")
+		go func() {
+			time.Sleep(time.Second * 5)
+			if !c.masterBus.Connected() {
+				log.Infof("Still disconnected from master, setting orphaned.")
+				c.setOrphaned()
+			}
+		}()
+	})
+
+	c.masterBus.OnConnect(func() {
+		log.Infof("Connected to master")
+		go func() {
+			time.Sleep(time.Second * 2)
+			if !c.masterBus.Connected() {
+				log.Infof("Still connected to master, setting unorphaned")
+				c.setUnorphaned()
+			}
+		}()
+	})
 
 	bridgeTopics := []string{"$node/#", "$device/#", "$home/#"}
 
-	c.bridgeMqtt(master, local, true, bridgeTopics)
-	c.bridgeMqtt(local, master, false, bridgeTopics)
+	c.bridgeMqtt(c.masterBus, c.localBus, true, bridgeTopics)
+	c.bridgeMqtt(c.localBus, c.masterBus, false, bridgeTopics)
 }
 
 type meshMessage struct {
@@ -296,6 +378,11 @@ type meshMessage struct {
 func (c *client) bridgeMqtt(from, to bus.Bus, masterToSlave bool, topics []string) {
 
 	onMessage := func(topic string, payload []byte) {
+
+		if masterToSlave {
+			// This is a message from master, clear the timeout
+			c.masterReceiveTimeout.Reset(orphanTimeout)
+		}
 
 		if payload[0] != '{' {
 			log.Warningf("Invalid payload (should be a json-rpc object): %s", payload)
