@@ -38,6 +38,7 @@ type client struct {
 	localBus             bus.Bus
 	masterBus            bus.Bus
 	masterReceiveTimeout *time.Timer
+	nodeDevice           *NodeDevice
 }
 
 type bridgeStatus struct {
@@ -167,7 +168,11 @@ func (c *client) start() {
 
 func (c *client) exportNodeDevice() {
 
-	device := &NodeDevice{ninja.LoadModuleInfo("./package.json")}
+	if c.nodeDevice != nil {
+		return
+	}
+
+	c.nodeDevice = &NodeDevice{ninja.LoadModuleInfo("./package.json")}
 
 	// TODO: Make some generic way to see if homecloud is running.
 	// XXX: Fix this. It's ugly.
@@ -184,7 +189,7 @@ func (c *client) exportNodeDevice() {
 	}
 
 	for {
-		err := c.conn.ExportDevice(device)
+		err := c.conn.ExportDevice(c.nodeDevice)
 		if err == nil {
 			break
 		}
@@ -192,6 +197,7 @@ func (c *client) exportNodeDevice() {
 		log.Warningf("Failed to export node device. Retrying in 5 sec: %s", err)
 		time.Sleep(time.Second * 5)
 	}
+
 }
 
 func (c *client) findPeers() {
