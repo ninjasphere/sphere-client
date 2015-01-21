@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"io/ioutil"
+	"os/exec"
 	"runtime"
 	"text/template"
 
@@ -76,5 +77,10 @@ func UpdateSphereAvahiService(isPaired, isMaster bool) error {
 		return nil
 	}
 
-	return ioutil.WriteFile("/data/etc/avahi/services/ninjasphere.service", []byte(serviceDefinition.String()), 0644)
+	err = ioutil.WriteFile("/data/etc/avahi/services/ninjasphere.service", []byte(serviceDefinition.String()), 0644)
+
+	// HACK: Remove this if it doesn't fix Chris's problem
+	exec.Command("service", "avahi-daemon", "restart").Output()
+
+	return err
 }
