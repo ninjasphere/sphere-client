@@ -645,6 +645,10 @@ func activate(client *http.Client, url string) (*credentials, error) {
 		log.Fatalf("Incorrect node id returned from pairing! Expected %s got %s", config.Serial(), response.Data.NodeID)
 	}
 
+	if response.Data.UserID == "" || response.Data.Token == "" || response.Data.SphereNetworkKey == "" {
+		log.Fatalf("Invalid credentials (missing value): %s", body)
+	}
+
 	return &credentials{
 		UserID:           response.Data.UserID,
 		Token:            response.Data.Token,
