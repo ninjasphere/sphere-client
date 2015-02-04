@@ -637,6 +637,10 @@ func activate(client *http.Client, url string) (*credentials, error) {
 	var response nodeClaimResponse
 	err = json.Unmarshal(body, &response)
 
+	if err != nil {
+		log.Fatalf("Failed to unmarshal credentials from cloud: %s (%s)", body, err)
+	}
+
 	if response.Data.NodeID != config.Serial() {
 		log.Fatalf("Incorrect node id returned from pairing! Expected %s got %s", config.Serial(), response.Data.NodeID)
 	}
