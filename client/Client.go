@@ -95,8 +95,7 @@ func (c *client) start() {
 	if !config.IsPaired() {
 		log.Infof("Client is unpaired. Attempting to pair.")
 		if err := c.pair(); err != nil {
-			log.Infof("An error occurred while pairing. Restarting. error: %s", err)
-			os.Exit(1)
+			log.Fatalf("An error occurred while pairing. Restarting. error: %s", err)
 		}
 
 		log.Infof("Pairing was successful.")
@@ -104,8 +103,7 @@ func (c *client) start() {
 		config.MustRefresh()
 
 		if !config.IsPaired() {
-			log.Infof("Pairing appeared successful, but I did not get the credentials. Restarting.")
-			os.Exit(1)
+			log.Fatalf("Pairing appeared successful, but I did not get the credentials. Restarting.")
 		}
 
 	}
