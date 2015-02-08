@@ -3,6 +3,7 @@ package client
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"runtime"
 	"text/template"
@@ -74,6 +75,11 @@ func UpdateSphereAvahiService(isPaired, isMaster bool) error {
 
 	if runtime.GOOS != "linux" {
 		log.Warningf("Avahi service definition is not being saved, as platform != linux")
+		return nil
+	}
+
+	if _, err := os.Stat("/data/etc/avahi/services"); err != nil {
+		log.Warningf("Avahi service definition is not being saved, as /data/etc/avahi/services does not exist")
 		return nil
 	}
 
