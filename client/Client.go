@@ -447,13 +447,13 @@ func (c *client) onBridgeStatus(status *bridgeStatus) bool {
 	log.Debugf("Got bridge status. connected:%t configured:%t", status.Connected, status.Configured)
 
 	if status.Connected {
+		c.updatePairingLight("green", false)
+	} else {
 		if c.master {
-			c.updatePairingLight("green", false)
+			c.updatePairingLight("red", true)
 		} else {
 			c.updatePairingLight("blue", false)
 		}
-	} else {
-		c.updatePairingLight("red", true)
 	}
 
 	if !status.Configured && c.master {
