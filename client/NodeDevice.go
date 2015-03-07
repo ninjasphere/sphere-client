@@ -7,21 +7,26 @@ import (
 )
 
 type NodeDevice struct {
-	info *model.Module
+	info        *model.Module
+	modelDevice *model.Device
 }
 
 func (d *NodeDevice) GetDeviceInfo() *model.Device {
-	name := "Spheramid " + config.Serial()
-	return &model.Device{
-		NaturalID:     config.Serial(),
-		NaturalIDType: "node",
-		Name:          &name,
-		Signatures: &map[string]string{
-			"ninja:manufacturer": "Ninja Blocks Inc.",
-			"ninja:productName":  "Spheramid",
-			"ninja:thingType":    "node",
-		},
+
+	if d.modelDevice == nil {
+		name := "Spheramid " + config.Serial()
+		d.modelDevice = &model.Device{
+			NaturalID:     config.Serial(),
+			NaturalIDType: "node",
+			Name:          &name,
+			Signatures: &map[string]string{
+				"ninja:manufacturer": "Ninja Blocks Inc.",
+				"ninja:productName":  "Spheramid",
+				"ninja:thingType":    "node",
+			},
+		}
 	}
+	return d.modelDevice
 }
 
 func (d *NodeDevice) GetModuleInfo() *model.Module {

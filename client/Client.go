@@ -172,7 +172,7 @@ func (c *client) exportNodeDevice() {
 		return
 	}
 
-	c.nodeDevice = &NodeDevice{ninja.LoadModuleInfo("./package.json")}
+	c.nodeDevice = &NodeDevice{info: ninja.LoadModuleInfo("./package.json")}
 
 	// TODO: Make some generic way to see if homecloud is running.
 	// XXX: Fix this. It's ugly.
