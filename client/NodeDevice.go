@@ -12,17 +12,18 @@ type NodeDevice struct {
 }
 
 func (d *NodeDevice) GetDeviceInfo() *model.Device {
-
 	if d.modelDevice == nil {
 		name := "Spheramid " + config.Serial()
+		sphereVersion := config.SphereVersion()
 		d.modelDevice = &model.Device{
 			NaturalID:     config.Serial(),
 			NaturalIDType: "node",
 			Name:          &name,
 			Signatures: &map[string]string{
-				"ninja:manufacturer": "Ninja Blocks Inc.",
-				"ninja:productName":  "Spheramid",
-				"ninja:thingType":    "node",
+				"ninja:manufacturer":  "Ninja Blocks Inc.",
+				"ninja:productName":   "Spheramid",
+				"ninja:thingType":     "node",
+				"ninja:sphereVersion": sphereVersion,
 			},
 		}
 	}
