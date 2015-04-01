@@ -28,6 +28,7 @@ import (
 var log = logger.GetLogger("Client")
 
 var orphanTimeout = config.Duration(time.Second*30, "client.orphanTimeout")
+var defaultTimeout = time.Second * 5
 
 type client struct {
 	conn                 *ninja.Connection
@@ -88,6 +89,7 @@ func Start() {
 		}
 	}()
 
+	listenToSiteUpdates(conn)
 }
 
 func (c *client) start() {
@@ -668,4 +670,75 @@ func parseMdnsInfo(field string) map[string]string {
 		}
 	}
 	return vals
+}
+
+// update the site-preferences.json file with a copy read from the site model
+func listenToSiteUpdates(conn *ninja.Connection) {
+	configSiteId := config.MustString("siteId")
+	siteModel := conn.GetServiceClient("$home/services/SiteModel")
+	siteModel.OnEvent("updated", func(siteId *string, values map[string]string) bool {
+		if siteId != nil && configSiteId == *siteId {
+			err := updateSitePreferences(siteModel, *siteId)
+			if err != nil {
+				log.Debugf("error ignored while updating site preferences: %v", err)
+			}
+		}
+		return true
+	})
+	err := updateSitePreferences(siteModel, configSiteId)
+	if err != nil {
+		log.Debugf("error ignored while updating site preferences: %v", err)
+	}
+}
+
+// update the site-preferences file with a copy read from the site model.
+// avoids the update if there is no change in order to prevent unnecessary writes
+func updateSitePreferences(siteModel *ninja.ServiceClient, siteId string) error {
+	site := &model.Site{}
+	if err := siteModel.Call("fetch", siteId, site, defaultTimeout); err != nil {
+		return err
+	}
+
+	prefs := site.SitePreferences
+	if prefs == nil {
+		empty := make(map[string]interface{})
+		prefs = &empty
+	}
+
+	if update, err := json.Marshal(prefs); err != nil {
+		return err
+	} else {
+
+		prefFileName := "/data/etc/opt/ninja/site-preferences.json"
+
+		// we only replace site-preferences if they have changed in order
+		// to avoid unnecessary writes onto the flash card.
+		updateRequired := true
+
+		if s, err := os.Open(prefFileName); err == nil {
+			existing := make([]byte, 0)
+			if existing, err = ioutil.ReadAll(s); err == nil {
+				if len(existing) == len(update) {
+					updateRequired = false
+					for i, b := range existing {
+						if update[i] != b {
+							updateRequired = true
+							break
+						}
+					}
+				}
+			}
+		}
+
+		if updateRequired {
+			if err := ioutil.WriteFile(prefFileName, update, 0644); err != nil {
+				return err
+			}
+			cmd := exec.Command("/opt/ninjablocks/bin/client-helper.sh", "apply-site-preferences")
+			if err := cmd.Wait(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
