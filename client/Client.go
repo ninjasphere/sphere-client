@@ -390,7 +390,7 @@ func (c *client) bridgeToMaster(host net.IP, port int) {
 		}()
 	})
 
-	bridgeTopics := []string{"$node/#", "$device/#", "$thing/#", "$home/#"}
+	bridgeTopics := []string{"$discover", "$site/#", "$home/#" /*deprecated*/, "$node/#", "$thing/#", "$device/#"}
 
 	c.bridgeMqtt(c.masterBus, c.localBus, true, bridgeTopics)
 	c.bridgeMqtt(c.localBus, c.masterBus, false, bridgeTopics)
