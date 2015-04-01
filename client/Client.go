@@ -21,6 +21,7 @@ import (
 	"github.com/ninjasphere/go-ninja/config"
 	"github.com/ninjasphere/go-ninja/logger"
 	"github.com/ninjasphere/go-ninja/model"
+	"github.com/ninjasphere/sphere-client/command"
 
 	ledmodel "github.com/ninjasphere/sphere-go-led-controller/model"
 )
@@ -29,6 +30,10 @@ var log = logger.GetLogger("Client")
 
 var orphanTimeout = config.Duration(time.Second*30, "client.orphanTimeout")
 var defaultTimeout = time.Second * 5
+
+const (
+	clientHelperPath = "/opt/ninjablocks/bin/client-helper.sh"
+)
 
 type client struct {
 	conn                 *ninja.Connection
@@ -191,6 +196,14 @@ func (c *client) exportNodeDevice() {
 	for {
 		err := c.conn.ExportDevice(c.nodeDevice)
 		if err == nil {
+			// export the sphere's command channel
+			if err := command.ExportCommandChannel(&command.Configuration{
+				Conn:       c.conn,
+				Device:     c.nodeDevice,
+				HelperPath: clientHelperPath,
+			}); err != nil {
+				log.Errorf("Error while exporting command channel: %v. Ignored.", err)
+			}
 			break
 		}
 
@@ -734,7 +747,7 @@ func updateSitePreferences(siteModel *ninja.ServiceClient, siteId string) error 
 			if err := ioutil.WriteFile(prefFileName, update, 0644); err != nil {
 				return err
 			}
-			cmd := exec.Command("/opt/ninjablocks/bin/client-helper.sh", "apply-site-preferences")
+			cmd := exec.Command(clientHelperPath, "apply-site-preferences")
 			if err := cmd.Wait(); err != nil {
 				return err
 			}
