@@ -739,7 +739,9 @@ func updateSitePreferences(siteModel *ninja.ServiceClient, siteId string) error 
 				return err
 			}
 			cmd := exec.Command(clientHelperPath, "apply-site-preferences")
-			if err := cmd.Wait(); err != nil {
+			if err := cmd.Start(); err != nil {
+				return err
+			} else if err := cmd.Wait(); err != nil {
 				return err
 			}
 		}
