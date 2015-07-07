@@ -86,12 +86,14 @@ func Start() {
 		log.Fatalf("Failed to update avahi service: %s", err)
 	}
 
-	go func() {
-		err := client.ensureTimezoneIsSet()
-		if err != nil {
-			log.Warningf("Could not save timezone: %s", err)
-		}
-	}()
+	if runtime.GOOS == "linux" {
+		go func() {
+			err := client.ensureTimezoneIsSet()
+			if err != nil {
+				log.Warningf("Could not save timezone: %s", err)
+			}
+		}()
+	}
 
 	listenToSiteUpdates(conn)
 }
@@ -116,26 +118,30 @@ func (c *client) start() {
 
 	log.Infof("Client is paired. User: %s", config.MustString("userId"))
 
-	mesh, err := refreshMeshInfo()
+	if !config.NoCloud() {
 
-	if err == errorUnauthorised {
-		log.Warningf("UNAUTHORISED! Unpairing.")
-		c.unpair()
-		return
-	}
+		mesh, err := refreshMeshInfo()
 
-	if err != nil {
-		log.Warningf("Failed to refresh mesh info: %s", err)
-	} else {
-		log.Debugf("Got mesh info: %+v", mesh)
-	}
+		if err == errorUnauthorised {
+			log.Warningf("UNAUTHORISED! Unpairing.")
+			c.unpair()
+			return
+		}
 
-	config.MustRefresh()
+		if err != nil {
+			log.Warningf("Failed to refresh mesh info: %s", err)
+		} else {
+			log.Debugf("Got mesh info: %+v", mesh)
+		}
 
-	if !config.HasString("masterNodeId") {
-		log.Warningf("We don't have any mesh information. Which is unlikely. But we can't do anything without it, so restarting client.")
-		time.Sleep(time.Second * 10)
-		os.Exit(0)
+		config.MustRefresh()
+
+		if !config.HasString("masterNodeId") {
+			log.Warningf("We don't have any mesh information. Which is unlikely. But we can't do anything without it, so restarting client.")
+			time.Sleep(time.Second * 10)
+			os.Exit(0)
+		}
+
 	}
 
 	if config.MustString("masterNodeId") == config.Serial() {
@@ -512,7 +518,7 @@ func (c *client) pair() error {
 	}
 
 	if config.Bool(false, "cloud", "allowSelfSigned") {
-		log.Warningf("Allowing self-signed cerificate (should only be used to connect to development cloud)")
+		log.Warningf("Allowing self-signed certificate (should only be used to connect to development cloud)")
 		client.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
@@ -582,6 +588,7 @@ func (c *client) ensureTimezoneIsSet() error {
 
 	for {
 		err := siteModel.Call("fetch", config.MustString("siteId"), &site, time.Second*5)
+
 		if err == nil && site.TimeZoneID != nil {
 
 			log.Infof("Saving timezone: %s", *site.TimeZoneID)
