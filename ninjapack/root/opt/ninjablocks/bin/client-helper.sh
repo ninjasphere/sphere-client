@@ -12,6 +12,8 @@ die() {
 
 client-args() {
 	(
+		NINJA_SPHERE_CLIENT_ARGS=""
+
 	    test -r /etc/profile && . /etc/profile
 	    test -r /etc/ninja-hardware && . /etc/ninja-hardware
 	    test -r /etc/ninja-release && . /etc/ninja-release
