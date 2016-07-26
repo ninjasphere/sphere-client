@@ -100,25 +100,25 @@ func Start() {
 
 func (c *client) start() {
 
-	if !config.IsPaired() {
-		log.Infof("Client is unpaired. Attempting to pair.")
-		if err := c.pair(); err != nil {
-			log.Fatalf("An error occurred while pairing. Restarting. error: %s", err)
-		}
-
-		log.Infof("Pairing was successful.")
-		// We reload the config so the creds can be picked up
-		config.MustRefresh()
+	if !config.NoCloud() {
 
 		if !config.IsPaired() {
-			log.Fatalf("Pairing appeared successful, but I did not get the credentials. Restarting.")
+			log.Infof("Client is unpaired. Attempting to pair.")
+			if err := c.pair(); err != nil {
+				log.Fatalf("An error occurred while pairing. Restarting. error: %s", err)
+			}
+
+			log.Infof("Pairing was successful.")
+			// We reload the config so the creds can be picked up
+			config.MustRefresh()
+
+			if !config.IsPaired() {
+				log.Fatalf("Pairing appeared successful, but I did not get the credentials. Restarting.")
+			}
+
 		}
 
-	}
-
-	log.Infof("Client is paired. User: %s", config.MustString("userId"))
-
-	if !config.NoCloud() {
+		log.Infof("Client is paired. User: %s", config.MustString("userId"))
 
 		mesh, err := refreshMeshInfo()
 
@@ -144,7 +144,7 @@ func (c *client) start() {
 
 	}
 
-	if config.MustString("masterNodeId") == config.Serial() {
+	if config.MustString("masterNodeId") == config.Serial() || config.NoCloud() {
 		log.Infof("I am the master, starting HomeCloud.")
 
 		cmd := exec.Command("start", "sphere-homecloud")
