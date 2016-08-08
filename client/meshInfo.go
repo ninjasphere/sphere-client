@@ -17,6 +17,7 @@ type meshInfo struct {
 	SiteID       string `json:"siteId"`
 	MasterNodeID string `json:"masterNodeId"`
 	SiteUpdated  int    `json:"siteUpdated"`
+	NoMesh       bool   `json:"noMesh"`
 }
 
 func refreshMeshInfo() (*meshInfo, error) {
@@ -49,6 +50,7 @@ func refreshMeshInfo() (*meshInfo, error) {
 		SiteID:       site.ID,
 		MasterNodeID: site.MasterNodeID,
 		SiteUpdated:  int(time.Time(site.Updated).UnixNano() / int64(time.Second)),
+		NoMesh: false,
 	}
 
 	return meshInfo, saveMeshInfo(meshInfo)
