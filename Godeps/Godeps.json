@@ -1,0 +1,162 @@
+{
+	"ImportPath": "github.com/ninjasphere/sphere-client",
+	"GoVersion": "go1.6",
+	"GodepVersion": "v74",
+	"Deps": [
+		{
+			"ImportPath": "github.com/alecthomas/units",
+			"Rev": "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+		},
+		{
+			"ImportPath": "github.com/bugsnag/bugsnag-go",
+			"Comment": "v1.0.5-19-g02e9528",
+			"Rev": "02e952891c52fbcb15f113d90633897355783b6e"
+		},
+		{
+			"ImportPath": "github.com/bugsnag/bugsnag-go/errors",
+			"Comment": "v1.0.5-19-g02e9528",
+			"Rev": "02e952891c52fbcb15f113d90633897355783b6e"
+		},
+		{
+			"ImportPath": "github.com/bugsnag/osext",
+			"Rev": "0dd3f918b21bec95ace9dc86c7e70266cfc5c702"
+		},
+		{
+			"ImportPath": "github.com/bugsnag/panicwrap",
+			"Comment": "1.1.0",
+			"Rev": "aceac81c6e2f55f23844821679a0553b545e91df"
+		},
+		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Rev": "2df174808ee097f90d259e432cc04442cf60be21"
+		},
+		{
+			"ImportPath": "github.com/go-fsnotify/fsnotify",
+			"Comment": "v1.2.10-6-g3c39c22",
+			"Rev": "3c39c22b2c7b0516d5f2553f1608e5d13cb19053"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go-syslog",
+			"Rev": "42a2b573b664dbf281bd48c3cc12c086b17a39ba"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go.net/internal/iana",
+			"Rev": "104dcad90073cd8d1e6828b2af19185b60cf3e29"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go.net/ipv4",
+			"Rev": "104dcad90073cd8d1e6828b2af19185b60cf3e29"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/go.net/ipv6",
+			"Rev": "104dcad90073cd8d1e6828b2af19185b60cf3e29"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/mdns",
+			"Rev": "9d85cf22f9f8d53cb5c81c1b2749f438b2ee333f"
+		},
+		{
+			"ImportPath": "github.com/huin/mqtt",
+			"Rev": "c2d0e7ca9387fcfe29274b4b32ac80798d57ad4d"
+		},
+		{
+			"ImportPath": "github.com/juju/loggo",
+			"Rev": "8477fc936adf0e382d680310047ca27e128a309a"
+		},
+		{
+			"ImportPath": "github.com/miekg/dns",
+			"Rev": "5d001d020961ae1c184f9f8152fdc73810481677"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/api",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/bus",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/config",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/logger",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/model",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/rpc",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/rpc/json2",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/schemas",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/go-ninja/simtime",
+			"Comment": "distributor-20141024-a-208-g07e10b8",
+			"Rev": "07e10b883ac56b2ca85980799721a6f25706a77a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/gojsonschema",
+			"Rev": "0b01062f865c322c1ba5eff5fee5f33e8a88a94a"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/mqtt",
+			"Rev": "56cb1867283b14dabdd59b938cb6888d10c9286d"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/redigo/internal",
+			"Comment": "distributor-20141024-a-37-gf416ddd",
+			"Rev": "f416dddd7956fec8061408fba374bef4989b1806"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/redigo/redis",
+			"Comment": "distributor-20141024-a-37-gf416ddd",
+			"Rev": "f416dddd7956fec8061408fba374bef4989b1806"
+		},
+		{
+			"ImportPath": "github.com/ninjasphere/sphere-go-led-controller/model",
+			"Comment": "v2.0.2-50",
+			"Rev": "7448fbfc3188af211f36c341dc3e75492ab41abb"
+		},
+		{
+			"ImportPath": "github.com/wolfeidau/bugsnag-go",
+			"Comment": "v1.0.2-8-g780fe6b",
+			"Rev": "780fe6b97951a64d735aa2a3b39c961ca6ee2a4d"
+		},
+		{
+			"ImportPath": "github.com/wolfeidau/loggo-syslog",
+			"Comment": "v1.0.1",
+			"Rev": "319e18c8e49e588df8034e5609ba1bc86d3bd443"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonpointer",
+			"Rev": "e0fe6f68307607d540ed8eac07a342c33fa1b54a"
+		},
+		{
+			"ImportPath": "github.com/xeipuuv/gojsonreference",
+			"Rev": "e02fc20de94c78484cd5ffb007f8af96be030a45"
+		},
+		{
+			"ImportPath": "gopkg.in/alecthomas/kingpin.v1",
+			"Comment": "v1.3.7",
+			"Rev": "45f9714aa86a9624491adeaab1e9df1baf84dd38"
+		}
+	]
+}
