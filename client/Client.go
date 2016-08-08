@@ -104,21 +104,25 @@ func (c *client) start() {
 		serial := config.Serial()
 		info := &meshInfo{
 			MasterNodeID: serial,
-			SiteID:       "nomesh"+serial,
-			SiteUpdated:  int(time.Now().UnixNano()/int64(time.Second)),
-			NoMesh: true,
+			SiteID:       "nomesh-" + serial,
+			SiteUpdated:  int(time.Now().UnixNano() / int64(time.Second)),
+			NoMesh:       true,
 		}
 		if err := saveMeshInfo(info); err != nil {
 			log.Fatalf("failed to save mesh info for --noCloud case")
+		} else {
+			log.Infof("generated noCloud mesh file")
 		}
 
 		creds := &credentials{
-			UserID: "nouser",
-			Token:  "notoken",
+			UserID:           "nouser",
+			Token:            "notoken",
 			SphereNetworkKey: "nonetworkkey",
 		}
 		if err := saveCreds(creds); err != nil {
 			log.Fatalf("failed to save credentals info for --noCloud case")
+		} else {
+			log.Infof("generated noCloud credentials file")
 		}
 
 		config.MustRefresh()
@@ -165,7 +169,7 @@ func (c *client) start() {
 			os.Exit(0)
 		}
 
-	} 
+	}
 
 	if config.MustString("masterNodeId") == config.Serial() {
 		log.Infof("I am the master, starting HomeCloud.")
