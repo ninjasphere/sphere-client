@@ -100,35 +100,7 @@ func Start() {
 
 func (c *client) start() {
 
-	if config.NoCloud() {
-		serial := config.Serial()
-		info := &meshInfo{
-			MasterNodeID: serial,
-			SiteID:       "nomesh-" + serial,
-			SiteUpdated:  int(time.Now().UnixNano() / int64(time.Second)),
-			NoMesh:       true,
-		}
-		if err := saveMeshInfo(info); err != nil {
-			log.Fatalf("failed to save mesh info for --noCloud case")
-		} else {
-			log.Infof("generated noCloud mesh file")
-		}
-
-		creds := &credentials{
-			UserID:           "nouser",
-			Token:            "notoken",
-			SphereNetworkKey: "nonetworkkey",
-		}
-		if err := saveCreds(creds); err != nil {
-			log.Fatalf("failed to save credentals info for --noCloud case")
-		} else {
-			log.Infof("generated noCloud credentials file")
-		}
-
-		config.MustRefresh()
-
-	} else {
-
+	if !config.NoCloud() {
 		if !config.IsPaired() {
 			log.Infof("Client is unpaired. Attempting to pair.")
 			if err := c.pair(); err != nil {
