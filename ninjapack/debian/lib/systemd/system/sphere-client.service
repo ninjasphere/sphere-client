@@ -3,7 +3,7 @@ Description=NinjaBlocks Sphere Client Service
 After=network.target 
 
 [Service]
-ExecStart=/bin/bash -c '. /etc/profile.d/ninja.sh && cd /opt/ninjablocks/sphere-director && ./sphere-director --mqtt.trace false --credentialFile /data/etc/opt/ninja/credentials.json --boardType "$${NINJA_BOARD_TYPE}"'
+ExecStart=/bin/bash -c '. /etc/profile.d/ninja.sh && cd /opt/ninjablocks/sphere-client && ./sphere-client $$(sphere-client-args)'
 KillMode=process
 Restart=on-failure
 
