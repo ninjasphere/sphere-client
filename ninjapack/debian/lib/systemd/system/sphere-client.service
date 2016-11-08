@@ -3,7 +3,7 @@ Description=NinjaBlocks Sphere Client Service
 After=network.target 
 
 [Service]
-ExecStart=/bin/bash -c '. /etc/profile.d/ninja.sh && cd /opt/ninjablocks/sphere-client && ./sphere-client $$(sphere-client-args)'
+ExecStart=/bin/bash -c '. /etc/profile && cd /opt/ninjablocks/sphere-client && exec ./sphere-client $$(sphere-client-args)'
 KillMode=process
 Restart=on-failure
 
