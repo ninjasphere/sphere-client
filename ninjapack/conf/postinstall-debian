@@ -1,1 +1,2 @@
+systemctl enable sphere-client
 service sphere-client restart || true
