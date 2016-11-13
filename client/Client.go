@@ -146,7 +146,7 @@ func (c *client) start() {
 	if config.MustString("masterNodeId") == config.Serial() {
 		log.Infof("I am the master, starting HomeCloud.")
 
-		cmd := exec.Command("start", "sphere-homecloud")
+		cmd := exec.Command("service", "sphere-homecloud", "start")
 		cmd.Output()
 		go c.exportNodeDevice()
 
